@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1
+
+- Renamed the package from `@local/todo-auto-advance` to
+  `@gradia64/todo-auto-advance`. Existing installs must uninstall the old name
+  and reinstall from `github:gradia64/todo-auto-advance`. No behaviour changes.
+
 ## 1.1.0
 
 - Added a todo list reminder: when a turn reaches `remindAfter` tool calls

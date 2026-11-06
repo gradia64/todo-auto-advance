@@ -1,6 +1,6 @@
 - insert:
     - id: todo-auto-advance
-      name: '@local/todo-auto-advance'
+      name: '@gradia64/todo-auto-advance'
       config:
         trigger: step
         tools: [write, edit, str_replace_editor, bash, pwsh]
