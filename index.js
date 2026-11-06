@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 export const name = 'todo-auto-advance';
 export const inject = ['tools', 'sessionProjections'];
 
@@ -18,7 +20,16 @@ export const defaults = Object.freeze({
   resetOnError: true,
   // Whether to complete the last in-progress todo when nothing is pending.
   completeLast: false,
+  // Remind the agent to create a todo list with todo_write once a turn has
+  // made this many tool calls without one. 0 disables the reminder.
+  remindAfter: 5,
 });
+
+export const REMINDER_TEXT =
+  'You have made several tool calls in this turn without a todo list. ' +
+  'If the task has more than one step, call `todo_write` now with one todo per ' +
+  'concrete step, the current one `in_progress`, and keep it updated as you work. ' +
+  'Skip this only if the task is trivial and almost done.';
 
 export function normalizeConfig(config = {}) {
   const c = { ...defaults, ...(config || {}) };
@@ -28,8 +39,11 @@ export function normalizeConfig(config = {}) {
     : [...defaults.tools];
   const n = Number(c.advanceAfter);
   const advanceAfter = Number.isInteger(n) && n >= 1 ? n : defaults.advanceAfter;
+  const r = Number(c.remindAfter);
+  const remindAfter = Number.isInteger(r) && r >= 0 ? r : defaults.remindAfter;
   return {
     trigger,
+    remindAfter,
     tools: new Set(tools),
     advanceAfter,
     resetOnError: c.resetOnError !== false,
@@ -52,7 +66,10 @@ export function apply(ctx, rawConfig) {
   const tracker = (session) => {
     let t = trackers.get(session);
     if (!t) {
-      t = { item: undefined, count: 0, step: freshStep(), ownWrite: undefined };
+      t = {
+        item: undefined, count: 0, step: freshStep(), ownWrite: undefined,
+        calls: 0, reminded: false,
+      };
       trackers.set(session, t);
     }
     return t;
@@ -124,6 +141,51 @@ export function apply(ctx, rawConfig) {
     });
   }
 
+  // Reminder: attached as additional context to the tool result that reaches
+  // the threshold, once per turn, only while the session has no todo list.
+  function reminderFor(exec) {
+    if (config.remindAfter === 0) return undefined;
+    const session = exec && exec.agent && exec.agent.session;
+    if (!session || exec.name === TODO_TOOL) return undefined;
+    const t = tracker(session);
+    if (t.reminded) return undefined;
+    t.calls += 1;
+    if (t.calls < config.remindAfter) return undefined;
+    let todos;
+    try {
+      todos = ctx.sessionProjections.stateOf(session, 'todos');
+    } catch {
+      return undefined;
+    }
+    if (Array.isArray(todos) && todos.length > 0) return undefined;
+    t.reminded = true;
+    return Object.freeze({
+      id: randomUUID(),
+      role: 'user',
+      content: Object.freeze([Object.freeze({ type: 'text', text: REMINDER_TEXT })]),
+      source: Object.freeze({
+        kind: 'todo-auto-advance',
+        form: 'notice',
+        summary: 'todo list reminder',
+      }),
+    });
+  }
+
+  ctx.on('tools/post-execute', async (exec, _result, next) => {
+    let reminder;
+    try {
+      reminder = reminderFor(exec);
+    } catch (e) {
+      ctx.logger.warn('todo-auto-advance: reminder failed:', e);
+    }
+    const downstream = await next();
+    if (!reminder || !downstream) return downstream;
+    return {
+      ...downstream,
+      additionalContexts: [reminder, ...(downstream.additionalContexts || [])],
+    };
+  });
+
   ctx.on('tools/result', (exec, result) => {
     const session = exec && exec.agent && exec.agent.session;
     if (!session || !result) return;
@@ -151,6 +213,7 @@ export function apply(ctx, rawConfig) {
         }
         // The agent is managing the list itself: drop what we counted so far
         // and ignore the rest of this step.
+        t.reminded = true;
         t.item = undefined;
         t.count = 0;
         t.step.manual = true;

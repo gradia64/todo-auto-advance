@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0
+
+- Added a todo list reminder: when a turn reaches `remindAfter` tool calls
+  (default 5) and the session has no todo list, the agent is asked once per
+  turn to create one with `todo_write`. Set `remindAfter: 0` to disable it.
+  The reminder is attached to the tool result as additional context, the same
+  way dsh's own `repeat-tool-reminder` does.
+
 ## 1.0.2
 
 - Added configuration (see `README.md`): `trigger`, `tools`, `advanceAfter`,

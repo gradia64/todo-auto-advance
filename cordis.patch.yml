@@ -7,3 +7,4 @@
         advanceAfter: 2
         resetOnError: true
         completeLast: false
+        remindAfter: 5
