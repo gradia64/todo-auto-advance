@@ -1,0 +1,9 @@
+- insert:
+    - id: todo-auto-advance
+      name: '@local/todo-auto-advance'
+      config:
+        trigger: step
+        tools: [write, edit, str_replace_editor, bash, pwsh]
+        advanceAfter: 2
+        resetOnError: true
+        completeLast: false

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Todo Auto-Advance",
+    "description": "Marks the in-progress todo as completed after a configurable amount of successful work (steps or tool results from selected tools) and advances to the next pending task."
+  }
+}

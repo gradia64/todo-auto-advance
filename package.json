@@ -1,0 +1,13 @@
+{
+  "name": "@local/todo-auto-advance",
+  "version": "1.0.2",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": ["index.js", "README.md", "cordis.patch.yml", "locale/*.json", "icon.svg", "CHANGELOG.md"],
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+}
